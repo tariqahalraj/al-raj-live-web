@@ -3,6 +3,7 @@ import { ChevronLeft, Camera, User, Mail, Lock, Eye, EyeOff, Loader2, AlertCircl
 import { useAppStore } from '@/shared/stores/app-store';
 import { supabase } from '@/core/supabase-client';
 import { SafeTextInput } from '@/shared/components/SafeTextInput';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export const SignUpScreen: React.FC = () => {
   const { setView, setUser } = useAppStore();
@@ -314,11 +315,11 @@ export const SignUpScreen: React.FC = () => {
             <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto py-6">
               <div className="w-32 h-32 lg:w-40 lg:h-40 mb-5 relative drop-shadow-2xl flex items-center justify-center">
                 <img
-                  src="/assets/sign-in-logo.webp"
+                  src={getAssetUrl('assets/sign-in-logo.webp')}
                   alt="Tariqah al-Raj Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+                    (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
                   }}
                 />
               </div>

@@ -9,6 +9,7 @@ import { getInitials } from '@/features/live-session/participants-data';
 import { formatDuration } from '@/shared/utils/format';
 import { recordingsManager, AppRecording } from '@/features/audio-engine/recordings-manager';
 import { supabase } from '@/core/supabase-client';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 const formatAudioTime = (seconds: number): string => {
   if (isNaN(seconds) || seconds < 0 || !isFinite(seconds)) return '00:00';
@@ -753,7 +754,7 @@ export const HostDashboardScreen: React.FC = () => {
         <div className="md:hidden bg-[#15803D] text-white p-4 pt-safe flex items-center justify-between shrink-0 shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center p-1 shadow-inner">
-              <img src="/assets/sign-in-logo.webp" alt="Tariqah al-Raj" className="w-full h-full object-contain" />
+              <img src={getAssetUrl('assets/sign-in-logo.webp')} alt="Tariqah al-Raj" className="w-full h-full object-contain" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white leading-tight">Tariqah al-Raj</h2>

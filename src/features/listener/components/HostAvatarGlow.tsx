@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { webRtcSessionManager } from '@/features/media-transport';
 import { AudioAnalyser } from '@/features/audio-engine';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export interface HostAvatarGlowProps {
   /** Host/Murshid avatar URL */
@@ -220,11 +221,11 @@ export const HostAvatarGlow: React.FC<HostAvatarGlowProps> = ({
       <div className="relative z-10 w-28 h-28">
         <div className="w-full h-full rounded-full overflow-hidden border-2 border-white shadow-[0_2px_16px_rgba(232,199,102,0.30)] ring-1.5 ring-[#FFF7D6]/70 bg-slate-100 flex items-center justify-center">
           <img
-            src={avatarUrl || '/assets/host-avatar.jpg'}
+            src={avatarUrl || getAssetUrl('assets/host-avatar.jpg')}
             alt={hostName}
             className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+              (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
             }}
           />
         </div>

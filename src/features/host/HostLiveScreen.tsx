@@ -9,6 +9,7 @@ import { recordingsManager } from '@/features/audio-engine/recordings-manager';
 import { webRtcSessionManager } from '@/features/media-transport';
 import { presenceManager, recoveryCoordinator, startBackgroundLiveService, stopBackgroundLiveService } from '@/features/live-session';
 import { supabase } from '@/core/supabase-client';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export const HostLiveScreen: React.FC = () => {
   const {
@@ -144,7 +145,7 @@ export const HostLiveScreen: React.FC = () => {
         artist: 'Our Murshid (Host)',
         album: 'Tariqah al-Raj Live',
         artwork: [
-          { src: '/assets/app-logo.png', sizes: '512x512', type: 'image/png' },
+          { src: getAssetUrl('assets/app-logo.png'), sizes: '512x512', type: 'image/png' },
         ],
       });
       navigator.mediaSession.playbackState = 'playing';

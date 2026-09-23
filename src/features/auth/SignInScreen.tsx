@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { supabase } from '@/core/supabase-client';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export const SignInScreen: React.FC = () => {
   const { setView, language, setLanguage, setUser } = useAppStore();
@@ -129,11 +130,11 @@ export const SignInScreen: React.FC = () => {
           <div className="flex flex-col items-center text-center mb-5">
             <div className="w-36 h-36 mb-3 relative drop-shadow-md flex items-center justify-center">
               <img
-                src="/assets/sign-in-logo.webp"
+                src={getAssetUrl('assets/sign-in-logo.webp')}
                 alt="Tariqah al-Raj Logo"
                 className="w-full h-full object-contain"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+                  (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
                 }}
               />
             </div>
@@ -266,11 +267,11 @@ export const SignInScreen: React.FC = () => {
             <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto py-6">
               <div className="w-36 h-36 lg:w-44 lg:h-44 mb-6 relative drop-shadow-2xl flex items-center justify-center">
                 <img
-                  src="/assets/sign-in-logo.webp"
+                  src={getAssetUrl('assets/sign-in-logo.webp')}
                   alt="Tariqah al-Raj Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+                    (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
                   }}
                 />
               </div>

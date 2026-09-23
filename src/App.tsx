@@ -11,6 +11,7 @@ import { recoveryCoordinator } from '@/features/live-session';
 import { webRtcSessionManager } from '@/features/media-transport';
 import { supabase } from '@/core/supabase-client';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -285,7 +286,7 @@ export const App: React.FC = () => {
         <div className="flex flex-col items-center justify-center text-center animate-in fade-in duration-300">
           <div className="w-36 h-36 mb-4 relative flex items-center justify-center drop-shadow-md">
             <img
-              src="/assets/sign-in-logo.webp"
+              src={getAssetUrl('assets/sign-in-logo.webp')}
               alt="Tariqah al-Raj Logo"
               className="w-full h-full object-contain"
             />

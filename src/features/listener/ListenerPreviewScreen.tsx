@@ -9,6 +9,7 @@ import { supabase } from '@/core/supabase-client';
 import { getInitials } from '@/features/live-session/participants-data';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export const ListenerPreviewScreen: React.FC = () => {
   const { setView, session, user, updateSession, setUser } = useAppStore();
@@ -122,7 +123,7 @@ export const ListenerPreviewScreen: React.FC = () => {
       if (data) {
         const stateNow = useAppStore.getState();
         let hostName = 'Our Murshid';
-        let hostAvatarUrl: string | undefined = '/assets/host-avatar.jpg';
+        let hostAvatarUrl: string | undefined = getAssetUrl('assets/host-avatar.jpg');
 
         if (data.host_id) {
           const { data: profile } = await supabase

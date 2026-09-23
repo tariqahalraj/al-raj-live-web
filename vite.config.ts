@@ -4,7 +4,7 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './', // Relative base path for GitHub Pages compatibility
+  base: process.env.NODE_ENV === 'production' ? '/al-raj-live-web/' : '/',
   plugins: [react()],
   resolve: {
     alias: {

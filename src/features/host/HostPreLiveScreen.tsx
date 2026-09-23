@@ -18,6 +18,7 @@ import { presenceManager, recoveryCoordinator } from '@/features/live-session';
 import { formatDuration } from '@/shared/utils/format';
 import { supabase } from '@/core/supabase-client';
 import { getInitials } from '@/features/live-session/participants-data';
+import { getAssetUrl } from '@/shared/utils/asset';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
 
 export const HostPreLiveScreen: React.FC = () => {
@@ -220,7 +221,7 @@ export const HostPreLiveScreen: React.FC = () => {
                 alt={user.fullName}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/host-avatar.jpg';
+                  (e.target as HTMLImageElement).src = getAssetUrl('assets/host-avatar.jpg');
                 }}
               />
             ) : (

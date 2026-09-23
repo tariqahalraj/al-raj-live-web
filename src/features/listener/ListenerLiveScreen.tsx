@@ -7,6 +7,7 @@ import { webRtcSessionManager } from '@/features/media-transport';
 import { presenceManager, recoveryCoordinator, startBackgroundLiveService, stopBackgroundLiveService } from '@/features/live-session';
 import { supabase } from '@/core/supabase-client';
 import { HostAvatarGlow } from './components';
+import { getAssetUrl } from '@/shared/utils/asset';
 
 export const ListenerLiveScreen: React.FC = () => {
   const { setView, session, user, participants, updateSession, isOnline } = useAppStore();
@@ -547,11 +548,11 @@ export const ListenerLiveScreen: React.FC = () => {
                 <div className="relative w-12 h-12 mb-1.5 shrink-0">
                   <div className="w-full h-full rounded-full overflow-hidden border border-slate-200 bg-white shadow-2xs">
                     <img
-                      src={session.hostAvatarUrl || '/assets/host-avatar.jpg'}
+                      src={session.hostAvatarUrl || getAssetUrl('assets/host-avatar.jpg')}
                       alt="Host"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+                        (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
                       }}
                     />
                   </div>
@@ -692,11 +693,11 @@ export const ListenerLiveScreen: React.FC = () => {
               <div className="relative w-[52px] h-[52px] mb-1.5 shrink-0">
                 <div className="w-full h-full rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-2xs">
                   <img
-                    src={session.hostAvatarUrl || '/assets/host-avatar.jpg'}
+                    src={session.hostAvatarUrl || getAssetUrl('assets/host-avatar.jpg')}
                     alt="Our Murshid"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/assets/app-logo.png';
+                      (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
                     }}
                   />
                 </div>
