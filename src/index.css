@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    color-scheme: light;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    color-scheme: light;
+    font-family: 'Inter', 'Noto Sans Bengali', 'Hind Siliguri', 'Kalpurush', system-ui, -apple-system, sans-serif;
+  }
+
+  input, textarea {
+    user-select: text;
+    -webkit-tap-highlight-color: transparent;
+    color-scheme: light;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #15803d !important;
+    font-family: 'Inter', 'Noto Sans Bengali', 'Hind Siliguri', 'Kalpurush', system-ui, -apple-system, sans-serif;
+  }
+  input:focus, textarea:focus {
+    outline: none !important;
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top, 0px), 1rem);
+  }
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+  }
+  .pl-safe {
+    padding-left: max(env(safe-area-inset-left, 0px), 1rem);
+  }
+  .pr-safe {
+    padding-right: max(env(safe-area-inset-right, 0px), 1rem);
+  }
+}
