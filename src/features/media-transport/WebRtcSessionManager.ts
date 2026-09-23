@@ -7,6 +7,7 @@ import {
 } from './types';
 import { cloudflareApiAdapter } from './CloudflareApiAdapter';
 import { negotiationController } from './NegotiationController';
+import { useAppStore, TransmissionMode } from '@/shared/stores/app-store';
 
 export class WebRtcSessionManager {
   private peerConnection: RTCPeerConnection | null = null;
@@ -14,6 +15,14 @@ export class WebRtcSessionManager {
   private publishedTrack: CloudflareTrack | null = null;
   private currentGeneration: number = 1;
   private status: TransportStatus = 'idle';
+
+  private activeAudioSender: RTCRtpSender | null = null;
+  private currentTransmissionMode: TransmissionMode = 'standard';
+  private autoAdaptiveEnabled: boolean = true;
+  private isAutoDowngraded: boolean = false;
+  private highLossCount: number = 0;
+  private goodNetworkCount: number = 0;
+  private modeNoticeListeners: Array<(notice: string, isDowngrade: boolean) => void> = [];
 
   private statusListeners: TransportStatusListener[] = [];
   private statsListeners: MediaStatsListener[] = [];
@@ -124,6 +133,52 @@ export class WebRtcSessionManager {
 
   getPublishedTrack(): CloudflareTrack | null {
     return this.publishedTrack;
+  }
+
+  async setTransmissionMode(mode: TransmissionMode, manual: boolean = true): Promise<void> {
+    this.currentTransmissionMode = mode;
+    if (manual) {
+      this.isAutoDowngraded = false;
+      this.highLossCount = 0;
+    }
+    const targetBps = mode === 'low-data' ? 12000 : 24000;
+    if (this.activeAudioSender) {
+      await negotiationController.applySenderBitrateLimit(this.activeAudioSender, targetBps);
+      console.log(`[WebRtcSessionManager] Dynamic transmission mode set to ${mode} (${targetBps} bps)`);
+    }
+    useAppStore.getState().updateSession({
+      transmissionMode: mode,
+      isAutoDowngraded: this.isAutoDowngraded,
+    });
+  }
+
+  getTransmissionMode(): TransmissionMode {
+    return this.currentTransmissionMode;
+  }
+
+  isModeAutoDowngraded(): boolean {
+    return this.isAutoDowngraded;
+  }
+
+  setAutoAdaptive(enabled: boolean) {
+    this.autoAdaptiveEnabled = enabled;
+  }
+
+  addModeNoticeListener(listener: (notice: string, isDowngrade: boolean) => void): () => void {
+    this.modeNoticeListeners.push(listener);
+    return () => {
+      this.modeNoticeListeners = this.modeNoticeListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifyModeNotice(notice: string, isDowngrade: boolean) {
+    this.modeNoticeListeners.forEach((l) => {
+      try {
+        l(notice, isDowngrade);
+      } catch (err) {
+        console.warn('[WebRtcSessionManager] mode notice error:', err);
+      }
+    });
   }
 
   setMute(muted: boolean) {
@@ -291,8 +346,14 @@ export class WebRtcSessionManager {
   async publishHostAudio(
     appSessionId: string,
     localStream: MediaStream,
-    generation: number = 1
+    generation: number = 1,
+    initialMode?: TransmissionMode
   ): Promise<CloudflareTrack> {
+    const mode = initialMode || useAppStore.getState().session.transmissionMode || 'standard';
+    this.currentTransmissionMode = mode;
+    this.isAutoDowngraded = false;
+    this.highLossCount = 0;
+    this.goodNetworkCount = 0;
     this.setGeneration(generation);
     this.setStatus('creating');
 
@@ -309,6 +370,7 @@ export class WebRtcSessionManager {
       }
 
       const sender = pc.addTrack(audioTrack, localStream);
+      this.activeAudioSender = sender;
 
       // Create offer
       const offer = await pc.createOffer({
@@ -316,7 +378,9 @@ export class WebRtcSessionManager {
         offerToReceiveVideo: false,
       });
 
-      await pc.setLocalDescription(offer);
+      // Munge Opus SDP parameters for selected transmission mode
+      const mungedSdp = negotiationController.mungeOpusSdp(offer.sdp || '', mode);
+      await pc.setLocalDescription(new RTCSessionDescription({ type: offer.type, sdp: mungedSdp }));
 
       // Bounded ICE gathering (1.5-2.0s)
       await negotiationController.gatherIce(pc);
@@ -345,8 +409,9 @@ export class WebRtcSessionManager {
       // Set remote answer
       await pc.setRemoteDescription(new RTCSessionDescription(trackResponse.sessionDescription));
 
-      // Apply 24 kbps target ceiling to sender parameters
-      await negotiationController.applySenderBitrateLimit(sender, 24000);
+      // Apply target ceiling to sender parameters (Standard: 24 kbps, Data Saver: 12 kbps)
+      const targetBps = mode === 'low-data' ? 12000 : 24000;
+      await negotiationController.applySenderBitrateLimit(sender, targetBps);
 
       this.publishedTrack = trackResponse.tracks[0];
       this.startStatsLoop();
@@ -428,6 +493,10 @@ export class WebRtcSessionManager {
   /**
    * Monitor WebRTC transport statistics (Bitrate, packet loss, RTT, jitter)
    */
+  /**
+   * Monitor WebRTC transport statistics (Bitrate, packet loss, RTT, jitter)
+   * Automatically adapts transmission mode down to 12 kbps Opus DTX if network degrades
+   */
   private startStatsLoop() {
     if (this.statsInterval) return;
 
@@ -439,9 +508,6 @@ export class WebRtcSessionManager {
       if (!this.peerConnection || this.peerConnection.connectionState === 'closed') {
         return;
       }
-      if (this.statsListeners.length === 0) {
-        return;
-      }
 
       try {
         const stats = await this.peerConnection.getStats();
@@ -449,8 +515,10 @@ export class WebRtcSessionManager {
         const timeDiffSec = (now - this.lastStatsTime) / 1000;
         this.lastStatsTime = now;
 
-        let bitrateKbps = 24; // Default baseline
+        let bitrateKbps = this.currentTransmissionMode === 'low-data' ? 12 : 24;
         let packetLossPercent = 0;
+        let remotePacketLossPercent = 0;
+        let remoteRttMs = 35;
         let rttMs = 35;
         let jitterMs = 2;
 
@@ -461,6 +529,14 @@ export class WebRtcSessionManager {
               bitrateKbps = Math.round(((bytes - this.lastBytesSent) * 8) / (timeDiffSec * 1000));
             }
             this.lastBytesSent = bytes;
+          }
+
+          if (report.type === 'remote-inbound-rtp' && report.kind === 'audio') {
+            const fractionLost = report.fractionLost || 0;
+            remotePacketLossPercent = Math.min(100, Math.round(fractionLost * 100));
+            if (report.roundTripTime) {
+              remoteRttMs = Math.round(report.roundTripTime * 1000);
+            }
           }
 
           if (report.type === 'inbound-rtp' && report.kind === 'audio') {
@@ -481,16 +557,66 @@ export class WebRtcSessionManager {
           }
         });
 
+        const effectiveRtt = Math.max(rttMs, remoteRttMs);
+        const effectiveLoss = Math.max(packetLossPercent, remotePacketLossPercent);
+
+        // Network connection type inspection (mobile slow-2g, 2g, 3g)
+        const navConn = (typeof navigator !== 'undefined' && (navigator as unknown as { connection?: { effectiveType?: string } }).connection) || null;
+        const is2G = navConn?.effectiveType === '2g' || navConn?.effectiveType === 'slow-2g';
+
+        // Auto-switch transmission mode if network degrades
+        if (this.autoAdaptiveEnabled && this.activeAudioSender) {
+          const isDegraded = effectiveLoss > 5 || effectiveRtt > 400 || is2G;
+          const isHealthy = effectiveLoss < 2 && effectiveRtt < 220 && !is2G;
+
+          if (this.currentTransmissionMode === 'standard' && isDegraded) {
+            this.highLossCount++;
+            if (this.highLossCount >= 2) {
+              console.warn('[WebRtcSessionManager] Network dropped/degraded — Auto-switching to low-data (12 kbps Opus DTX)');
+              this.currentTransmissionMode = 'low-data';
+              this.isAutoDowngraded = true;
+              this.highLossCount = 0;
+              this.goodNetworkCount = 0;
+              negotiationController.applySenderBitrateLimit(this.activeAudioSender, 12000).catch(() => {});
+              useAppStore.getState().updateSession({
+                transmissionMode: 'low-data',
+                isAutoDowngraded: true,
+              });
+              this.notifyModeNotice('Network weak — Auto-switched to Data Saver (12 kbps)', true);
+            }
+          } else if (this.isAutoDowngraded && this.currentTransmissionMode === 'low-data' && isHealthy) {
+            this.goodNetworkCount++;
+            if (this.goodNetworkCount >= 5) {
+              console.log('[WebRtcSessionManager] Network recovered — Restoring to standard (24 kbps)');
+              this.currentTransmissionMode = 'standard';
+              this.isAutoDowngraded = false;
+              this.highLossCount = 0;
+              this.goodNetworkCount = 0;
+              negotiationController.applySenderBitrateLimit(this.activeAudioSender, 24000).catch(() => {});
+              useAppStore.getState().updateSession({
+                transmissionMode: 'standard',
+                isAutoDowngraded: false,
+              });
+              this.notifyModeNotice('Network recovered — Restored to Standard (24 kbps)', false);
+            }
+          } else {
+            if (!isDegraded) this.highLossCount = 0;
+            if (!isHealthy) this.goodNetworkCount = 0;
+          }
+        }
+
         const transportStats: MediaTransportStats = {
-          bitrateKbps: Math.max(8, Math.min(64, bitrateKbps || 24)),
-          packetLossPercent,
-          roundTripTimeMs: rttMs,
+          bitrateKbps: Math.max(8, Math.min(64, bitrateKbps || (this.currentTransmissionMode === 'low-data' ? 12 : 24))),
+          packetLossPercent: effectiveLoss,
+          roundTripTimeMs: effectiveRtt,
           jitterMs,
           audioLevel: 1.0,
           timestamp: now,
         };
 
-        this.statsListeners.forEach((l) => l(transportStats));
+        if (this.statsListeners.length > 0) {
+          this.statsListeners.forEach((l) => l(transportStats));
+        }
       } catch (err) {
         console.warn('[WebRtcSessionManager] Stats collection error:', err);
       }
@@ -510,6 +636,10 @@ export class WebRtcSessionManager {
   teardown() {
     this.stopStatsLoop();
     negotiationController.reset();
+    this.activeAudioSender = null;
+    this.isAutoDowngraded = false;
+    this.highLossCount = 0;
+    this.goodNetworkCount = 0;
 
     if (this.peerConnection) {
       try {

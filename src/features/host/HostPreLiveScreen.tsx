@@ -10,6 +10,10 @@ import {
   Users,
   Clock,
   LayoutDashboard,
+  Wifi,
+  Zap,
+  Leaf,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { audioEngine, recordingService } from '@/features/audio-engine';
@@ -18,11 +22,10 @@ import { presenceManager, recoveryCoordinator } from '@/features/live-session';
 import { formatDuration } from '@/shared/utils/format';
 import { supabase } from '@/core/supabase-client';
 import { getInitials } from '@/features/live-session/participants-data';
-import { getAssetUrl } from '@/shared/utils/asset';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
 
 export const HostPreLiveScreen: React.FC = () => {
-  const { setView, setPreviousHostView, session, user, updateSession, endSession } = useAppStore();
+  const { setView, setPreviousHostView, session, user, updateSession, endSession, setTransmissionMode } = useAppStore();
   const [isStarting, setIsStarting] = useState(false);
   const [sessionTitle, setSessionTitle] = useState(session.title || 'Zikr Session');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -126,7 +129,8 @@ export const HostPreLiveScreen: React.FC = () => {
       const publishedTrack = await webRtcSessionManager.publishHostAudio(
         activeSessionId,
         destStream,
-        mediaGen
+        mediaGen,
+        session.transmissionMode || 'standard'
       );
 
       // 5. Confirm initial publication in database (STARTING -> LIVE)
@@ -221,7 +225,7 @@ export const HostPreLiveScreen: React.FC = () => {
                 alt={user.fullName}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = getAssetUrl('assets/host-avatar.jpg');
+                  (e.target as HTMLImageElement).src = '/assets/host-avatar.jpg';
                 }}
               />
             ) : (
@@ -390,8 +394,72 @@ export const HostPreLiveScreen: React.FC = () => {
             </div>
           </div>
 
+          {/* Transmission Mode Selector */}
+          <div className="w-full mb-3 bg-white/95 border border-slate-200/90 rounded-2xl p-3 shadow-xs">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                Audio Quality & Transmission
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Auto-adapts on weak network
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* Standard Mode Pill */}
+              <button
+                type="button"
+                onClick={() => setTransmissionMode('standard')}
+                className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                  session.transmissionMode === 'standard'
+                    ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                    <Zap className={`w-3.5 h-3.5 ${session.transmissionMode === 'standard' ? 'text-emerald-600 fill-emerald-600' : 'text-slate-400'}`} />
+                    Standard
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    24 kbps
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  Opus high clarity · ~10.8 MB/h
+                </p>
+              </button>
+
+              {/* Data Saver Mode Pill */}
+              <button
+                type="button"
+                onClick={() => setTransmissionMode('low-data')}
+                className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                  session.transmissionMode === 'low-data'
+                    ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600 shadow-2xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                    <Leaf className={`w-3.5 h-3.5 ${session.transmissionMode === 'low-data' ? 'text-emerald-600 fill-emerald-600' : 'text-slate-400'}`} />
+                    Data Saver
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                    12 kbps
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  Opus DTX · 50% data saver · 2G/3G
+                </p>
+              </button>
+            </div>
+          </div>
+
           {/* Primary Start Live CTA: Pinned to the bottom */}
-          <div className="w-full pb-6 pt-2 shrink-0">
+          <div className="w-full pb-6 pt-1 shrink-0">
             <button
               type="button"
               onClick={handleStartLive}

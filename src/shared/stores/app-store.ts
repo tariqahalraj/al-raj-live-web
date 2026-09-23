@@ -20,6 +20,8 @@ export interface UserProfile {
   role: 'USER' | 'HOST' | 'ADMIN';
 }
 
+export type TransmissionMode = 'standard' | 'low-data';
+
 export interface LiveSessionState {
   id: string;
   title: string;
@@ -33,6 +35,9 @@ export interface LiveSessionState {
   isRecording: boolean;
   selectedMicrophone: string;
   audioQuality: string;
+  transmissionMode: TransmissionMode;
+  autoAdaptiveBitrate: boolean;
+  isAutoDowngraded: boolean;
   cloudflareSessionId?: string;
   cloudflareTrackId?: string;
   isKicked?: boolean;
@@ -57,6 +62,8 @@ interface AppStore {
   setParticipants: (participants: Participant[]) => void;
   setListenerCount: (count: number) => void;
   endSession: () => void;
+  setTransmissionMode: (mode: TransmissionMode) => void;
+  setAutoAdaptiveBitrate: (enabled: boolean) => void;
   toggleHostMute: () => void;
   toggleRecording: () => void;
   incrementElapsed: () => void;
@@ -84,6 +91,9 @@ export const useAppStore = create<AppStore>((set) => ({
     isBanned: false,
     selectedMicrophone: 'Default (Internal Mic)',
     audioQuality: 'Optimized for speech (Recommended)',
+    transmissionMode: 'standard',
+    autoAdaptiveBitrate: true,
+    isAutoDowngraded: false,
   },
   participants: [],
 
@@ -97,6 +107,18 @@ export const useAppStore = create<AppStore>((set) => ({
   setParticipants: (participants) => set({ participants }),
   setListenerCount: (count) =>
     set((state) => ({ session: { ...state.session, listenerCount: count } })),
+  setTransmissionMode: (mode) =>
+    set((state) => ({
+      session: {
+        ...state.session,
+        transmissionMode: mode,
+        isAutoDowngraded: false,
+      },
+    })),
+  setAutoAdaptiveBitrate: (enabled) =>
+    set((state) => ({
+      session: { ...state.session, autoAdaptiveBitrate: enabled },
+    })),
   endSession: () =>
     set((state) => ({
       session: {
@@ -107,6 +129,7 @@ export const useAppStore = create<AppStore>((set) => ({
         isRecording: false,
         isKicked: false,
         listenerCount: 0,
+        isAutoDowngraded: false,
       },
       participants: [],
       currentView:

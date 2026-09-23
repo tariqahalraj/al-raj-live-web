@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { ChevronLeft, MicOff, PhoneOff, Loader2, Volume2, Volume1, VolumeX } from 'lucide-react';
+import { ChevronLeft, MicOff, PhoneOff, Loader2, Volume2, Volume1, VolumeX, Leaf } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { getInitials } from '@/features/live-session/participants-data';
 import { formatDuration } from '@/shared/utils/format';
@@ -7,7 +7,6 @@ import { webRtcSessionManager } from '@/features/media-transport';
 import { presenceManager, recoveryCoordinator, startBackgroundLiveService, stopBackgroundLiveService } from '@/features/live-session';
 import { supabase } from '@/core/supabase-client';
 import { HostAvatarGlow } from './components';
-import { getAssetUrl } from '@/shared/utils/asset';
 
 export const ListenerLiveScreen: React.FC = () => {
   const { setView, session, user, participants, updateSession, isOnline } = useAppStore();
@@ -414,7 +413,14 @@ export const ListenerLiveScreen: React.FC = () => {
         </div>
 
         {/* Top Bar Right: Live Badge */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {session.transmissionMode === 'low-data' && (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-300/30 text-[10px] font-bold">
+              <Leaf className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />
+              <span>Data Saver</span>
+            </div>
+          )}
+
           {/* Unified Live Badge + Elapsed Timer */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -548,11 +554,11 @@ export const ListenerLiveScreen: React.FC = () => {
                 <div className="relative w-12 h-12 mb-1.5 shrink-0">
                   <div className="w-full h-full rounded-full overflow-hidden border border-slate-200 bg-white shadow-2xs">
                     <img
-                      src={session.hostAvatarUrl || getAssetUrl('assets/host-avatar.jpg')}
+                      src={session.hostAvatarUrl || '/assets/host-avatar.jpg'}
                       alt="Host"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                        (e.target as HTMLImageElement).src = '/assets/app-logo.png';
                       }}
                     />
                   </div>
@@ -693,11 +699,11 @@ export const ListenerLiveScreen: React.FC = () => {
               <div className="relative w-[52px] h-[52px] mb-1.5 shrink-0">
                 <div className="w-full h-full rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-2xs">
                   <img
-                    src={session.hostAvatarUrl || getAssetUrl('assets/host-avatar.jpg')}
+                    src={session.hostAvatarUrl || '/assets/host-avatar.jpg'}
                     alt="Our Murshid"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                      (e.target as HTMLImageElement).src = '/assets/app-logo.png';
                     }}
                   />
                 </div>

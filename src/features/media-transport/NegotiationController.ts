@@ -139,7 +139,64 @@ export class NegotiationController {
   }
 
   /**
-   * Apply 24 kbps requested ceiling to audio sender parameters as specified by F5 Section 10
+   * Munges Opus SDP parameters to optimize for standard (24 kbps) or low-data saver (12 kbps Opus DTX)
+   */
+  mungeOpusSdp(sdp: string, mode: 'standard' | 'low-data'): string {
+    const lines = sdp.split('\r\n');
+    let opusPt: string | null = null;
+
+    for (const line of lines) {
+      const match = line.match(/^a=rtpmap:(\d+)\s+opus\/48000\/2/i);
+      if (match) {
+        opusPt = match[1];
+        break;
+      }
+    }
+
+    if (!opusPt) return sdp;
+
+    const targetBitrate = mode === 'low-data' ? 12000 : 24000;
+    const usedtx = mode === 'low-data' ? '1' : '0';
+    let fmtpFound = false;
+
+    const modifiedLines = lines.map((line) => {
+      if (line.startsWith(`a=fmtp:${opusPt} `)) {
+        fmtpFound = true;
+        let params = line.replace(`a=fmtp:${opusPt} `, '').trim();
+        if (/maxaveragebitrate=\d+/.test(params)) {
+          params = params.replace(/maxaveragebitrate=\d+/, `maxaveragebitrate=${targetBitrate}`);
+        } else {
+          params += `;maxaveragebitrate=${targetBitrate}`;
+        }
+        if (/usedtx=\d+/.test(params)) {
+          params = params.replace(/usedtx=\d+/, `usedtx=${usedtx}`);
+        } else {
+          params += `;usedtx=${usedtx}`;
+        }
+        if (!/stereo=\d+/.test(params)) {
+          params += ';stereo=0;sprop-stereo=0';
+        }
+        if (!/useinbandfec=1/.test(params)) {
+          params += ';useinbandfec=1';
+        }
+        return `a=fmtp:${opusPt} ${params}`;
+      }
+      return line;
+    });
+
+    if (!fmtpFound) {
+      const rtpmapIdx = modifiedLines.findIndex((l) => l.startsWith(`a=rtpmap:${opusPt} `));
+      if (rtpmapIdx !== -1) {
+        const fmtpLine = `a=fmtp:${opusPt} minptime=10;useinbandfec=1;maxaveragebitrate=${targetBitrate};usedtx=${usedtx};stereo=0;sprop-stereo=0`;
+        modifiedLines.splice(rtpmapIdx + 1, 0, fmtpLine);
+      }
+    }
+
+    return modifiedLines.join('\r\n');
+  }
+
+  /**
+   * Apply target ceiling to audio sender parameters (Standard: 24 kbps, Data Saver: 12 kbps)
    */
   async applySenderBitrateLimit(sender: RTCRtpSender, targetBps: number = 24000): Promise<void> {
     try {
@@ -149,6 +206,8 @@ export class NegotiationController {
       }
 
       params.encodings[0].maxBitrate = targetBps;
+      params.encodings[0].priority = 'high';
+      params.encodings[0].networkPriority = 'high';
       await sender.setParameters(params);
       console.log(`[NegotiationController] Applied ${targetBps} bps ceiling to audio sender`);
     } catch (err) {
