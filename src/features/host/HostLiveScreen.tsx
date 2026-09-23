@@ -297,7 +297,7 @@ export const HostLiveScreen: React.FC = () => {
     setActionNotice(
       nextMode === 'low-data'
         ? '🍃 Switched to Data Saver Mode (12 kbps Opus DTX)'
-        : '⚡ Switched to Standard Mode (48 kbps Opus Full Fidelity)'
+        : '⚡ Switched to Standard Mode (24 kbps Opus Baseline)'
     );
     setTimeout(() => setActionNotice(null), 4000);
   };
@@ -308,7 +308,7 @@ export const HostLiveScreen: React.FC = () => {
     setActionNotice(
       mode === 'low-data'
         ? '🍃 Switched to Data Saver Mode (12 kbps Opus DTX)'
-        : '⚡ Switched to Standard Mode (48 kbps Opus Full Fidelity)'
+        : '⚡ Switched to Standard Mode (24 kbps Opus Baseline)'
     );
     setTimeout(() => setActionNotice(null), 4000);
   };
@@ -412,7 +412,7 @@ export const HostLiveScreen: React.FC = () => {
                 ? 'bg-amber-500/25 text-amber-200 border-amber-300/40 hover:bg-amber-500/35'
                 : 'bg-white/10 text-white border-white/15 hover:bg-white/20'
             }`}
-            title={`Mode: ${session.transmissionMode === 'low-data' ? 'Data Saver (12 kbps Opus DTX)' : 'Standard (48 kbps Opus Full Fidelity)'}. Tap to switch.`}
+            title={`Mode: ${session.transmissionMode === 'low-data' ? 'Data Saver (12 kbps Opus DTX)' : 'Standard (24 kbps Opus Baseline)'}. Tap to switch.`}
             aria-label="Toggle Transmission Mode"
           >
             {session.transmissionMode === 'low-data' ? (
@@ -426,7 +426,7 @@ export const HostLiveScreen: React.FC = () => {
             ) : (
               <>
                 <Zap className="w-3 h-3 text-emerald-300 fill-emerald-300" />
-                <span>48k</span>
+                <span>24k</span>
               </>
             )}
           </button>
@@ -504,7 +504,7 @@ export const HostLiveScreen: React.FC = () => {
                   }`}
                 >
                   <Zap className="w-3 h-3" />
-                  <span>Standard 48k</span>
+                  <span>Standard 24k</span>
                 </button>
                 <button
                   type="button"
@@ -736,7 +736,7 @@ export const HostLiveScreen: React.FC = () => {
             ) : (
               <>
                 <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
-                <span>Standard (48k Opus)</span>
+                <span>Standard (24k Opus)</span>
               </>
             )}
           </button>

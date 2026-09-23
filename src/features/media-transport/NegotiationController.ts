@@ -155,7 +155,7 @@ export class NegotiationController {
 
     if (!opusPt) return sdp;
 
-    const targetBitrate = mode === 'low-data' ? 12000 : 48000;
+    const targetBitrate = mode === 'low-data' ? 12000 : 24000;
     const usedtx = mode === 'low-data' ? '1' : '0';
     let fmtpFound = false;
 
@@ -196,9 +196,9 @@ export class NegotiationController {
   }
 
   /**
-   * Apply target ceiling to audio sender parameters (Standard: 48 kbps, Data Saver: 12 kbps)
+   * Apply target ceiling to audio sender parameters (Standard: 24 kbps, Data Saver: 12 kbps)
    */
-  async applySenderBitrateLimit(sender: RTCRtpSender, targetBps: number = 48000): Promise<void> {
+  async applySenderBitrateLimit(sender: RTCRtpSender, targetBps: number = 24000): Promise<void> {
     try {
       const params = sender.getParameters();
       if (!params.encodings || params.encodings.length === 0) {
