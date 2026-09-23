@@ -9,10 +9,6 @@ import {
   LayoutDashboard,
   ShieldBan,
   X,
-  Zap,
-  Leaf,
-  Wifi,
-  ShieldCheck,
 } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { getInitials } from '@/features/live-session/participants-data';
@@ -34,7 +30,6 @@ export const HostLiveScreen: React.FC = () => {
     endSession,
     user,
     updateSession,
-    setTransmissionMode,
   } = useAppStore();
 
   const [targetKickUser, setTargetKickUser] = useState<{ id: string; name: string; avatarUrl?: string } | null>(null);
@@ -290,29 +285,6 @@ export const HostLiveScreen: React.FC = () => {
     presenceManager.broadcastHostMute(nextMuted);
   };
 
-  const handleToggleTransmissionMode = () => {
-    const nextMode = session.transmissionMode === 'standard' ? 'low-data' : 'standard';
-    webRtcSessionManager.setTransmissionMode(nextMode);
-    setTransmissionMode(nextMode);
-    setActionNotice(
-      nextMode === 'low-data'
-        ? '🍃 Switched to Data Saver Mode (12 kbps Opus DTX)'
-        : '⚡ Switched to Standard Mode (24 kbps Opus Baseline)'
-    );
-    setTimeout(() => setActionNotice(null), 4000);
-  };
-
-  const handleSetTransmissionMode = (mode: 'standard' | 'low-data') => {
-    webRtcSessionManager.setTransmissionMode(mode);
-    setTransmissionMode(mode);
-    setActionNotice(
-      mode === 'low-data'
-        ? '🍃 Switched to Data Saver Mode (12 kbps Opus DTX)'
-        : '⚡ Switched to Standard Mode (24 kbps Opus Baseline)'
-    );
-    setTimeout(() => setActionNotice(null), 4000);
-  };
-
   const handleEndLive = async () => {
     if (window.confirm('Are you sure you want to end this live session?')) {
       // 0. Automatically finalize and download audio recording if active
@@ -401,36 +373,8 @@ export const HostLiveScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Top bar right: Transmission Mode Toggle, Host Dashboard Icon & Unified Live Badge */}
+        {/* Top bar right: Host Dashboard Icon & Unified Live Badge */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0 ml-2">
-          {/* Quick Transmission Mode Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleTransmissionMode}
-            className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer border shrink-0 ${
-              session.transmissionMode === 'low-data'
-                ? 'bg-amber-500/25 text-amber-200 border-amber-300/40 hover:bg-amber-500/35'
-                : 'bg-white/10 text-white border-white/15 hover:bg-white/20'
-            }`}
-            title={`Mode: ${session.transmissionMode === 'low-data' ? 'Data Saver (12 kbps Opus DTX)' : 'Standard (24 kbps Opus Baseline)'}. Tap to switch.`}
-            aria-label="Toggle Transmission Mode"
-          >
-            {session.transmissionMode === 'low-data' ? (
-              <>
-                <Leaf className="w-3 h-3 text-amber-300 fill-amber-300" />
-                <span>12k</span>
-                {session.isAutoDowngraded && (
-                  <span className="text-[8px] bg-amber-400 text-amber-950 px-1 rounded uppercase font-black">Auto</span>
-                )}
-              </>
-            ) : (
-              <>
-                <Zap className="w-3 h-3 text-emerald-300 fill-emerald-300" />
-                <span>24k</span>
-              </>
-            )}
-          </button>
-
           <button
             type="button"
             onClick={() => {
@@ -480,46 +424,6 @@ export const HostLiveScreen: React.FC = () => {
             <p className="text-xs text-slate-500 mt-1">
               {session.title || 'Live Broadcast'}
             </p>
-
-            {/* Transmission Quality Control Card */}
-            <div className="w-full mt-4 p-3 bg-slate-50 border border-slate-200/90 rounded-xl text-left">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Wifi className="w-3.5 h-3.5 text-slate-500" />
-                  Transmission
-                </span>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Auto-adapt
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSetTransmissionMode('standard')}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
-                    session.transmissionMode === 'standard'
-                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Zap className="w-3 h-3" />
-                  <span>Standard 24k</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetTransmissionMode('low-data')}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
-                    session.transmissionMode === 'low-data'
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <Leaf className="w-3 h-3" />
-                  <span>Saver 12k</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Action Buttons */}
@@ -713,33 +617,6 @@ export const HostLiveScreen: React.FC = () => {
           <h2 className="text-base font-bold text-[#15803D] mt-1 mb-1">
             {session.isHostMuted ? 'Microphone Muted' : 'Broadcasting Live'}
           </h2>
-
-          {/* Transmission Mode Badge / Switcher for Mobile */}
-          <button
-            type="button"
-            onClick={handleToggleTransmissionMode}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border shadow-2xs mb-1 ${
-              session.transmissionMode === 'low-data'
-                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
-            }`}
-            title="Tap to switch transmission mode"
-          >
-            {session.transmissionMode === 'low-data' ? (
-              <>
-                <Leaf className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
-                <span>Data Saver (12k Opus DTX)</span>
-                {session.isAutoDowngraded && (
-                  <span className="text-[9px] bg-amber-300 text-amber-950 px-1 py-0.2 rounded font-black uppercase">Auto</span>
-                )}
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
-                <span>Standard (24k Opus)</span>
-              </>
-            )}
-          </button>
         </div>
 
         {/* Listeners Grid Section */}
