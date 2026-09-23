@@ -9,6 +9,8 @@ import {
   LayoutDashboard,
   ShieldBan,
   X,
+  Zap,
+  Leaf,
 } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { getInitials } from '@/features/live-session/participants-data';
@@ -30,6 +32,7 @@ export const HostLiveScreen: React.FC = () => {
     endSession,
     user,
     updateSession,
+    setTransmissionMode,
   } = useAppStore();
 
   const [targetKickUser, setTargetKickUser] = useState<{ id: string; name: string; avatarUrl?: string } | null>(null);
@@ -285,6 +288,18 @@ export const HostLiveScreen: React.FC = () => {
     presenceManager.broadcastHostMute(nextMuted);
   };
 
+  const handleToggleTransmissionMode = () => {
+    const nextMode = session.transmissionMode === 'standard' ? 'low-data' : 'standard';
+    webRtcSessionManager.setTransmissionMode(nextMode);
+    setTransmissionMode(nextMode);
+    setActionNotice(
+      nextMode === 'low-data'
+        ? '🍃 Switched to Data Saver Mode'
+        : '⚡ Switched to Standard Mode'
+    );
+    setTimeout(() => setActionNotice(null), 3000);
+  };
+
   const handleEndLive = async () => {
     if (window.confirm('Are you sure you want to end this live session?')) {
       // 0. Automatically finalize and download audio recording if active
@@ -418,9 +433,39 @@ export const HostLiveScreen: React.FC = () => {
               activeBgClass="bg-[#15803D] text-white"
             />
 
-            <h2 className="text-base font-bold text-slate-900">
-              {session.isHostMuted ? 'Microphone Muted' : 'Broadcasting Live'}
-            </h2>
+            {/* Transmission Mode / Mute Pill (Replaces "Broadcasting Live" text) */}
+            {session.isHostMuted ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 mt-2 mb-0.5">
+                <MicOff className="w-3.5 h-3.5 text-rose-600" />
+                <span>Microphone Muted</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleToggleTransmissionMode}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer border shadow-2xs mt-2 mb-0.5 ${
+                  session.transmissionMode === 'low-data'
+                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                }`}
+                title="Tap to switch transmission mode"
+              >
+                {session.transmissionMode === 'low-data' ? (
+                  <>
+                    <Leaf className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+                    <span>Data Saver</span>
+                    {session.isAutoDowngraded && (
+                      <span className="text-[9px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-bold uppercase">Auto</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                    <span>Standard</span>
+                  </>
+                )}
+              </button>
+            )}
             <p className="text-xs text-slate-500 mt-1">
               {session.title || 'Live Broadcast'}
             </p>
@@ -613,10 +658,39 @@ export const HostLiveScreen: React.FC = () => {
             activeBgClass="bg-[#15803D] text-white"
           />
 
-          {/* Broadcasting Message */}
-          <h2 className="text-base font-bold text-[#15803D] mt-1 mb-1">
-            {session.isHostMuted ? 'Microphone Muted' : 'Broadcasting Live'}
-          </h2>
+          {/* Transmission Mode / Mute Pill (Replaces "Broadcasting Live" text) */}
+          {session.isHostMuted ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 mt-2 mb-1">
+              <MicOff className="w-3.5 h-3.5 text-rose-600" />
+              <span>Microphone Muted</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleToggleTransmissionMode}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer border shadow-2xs mt-2 mb-1 ${
+                session.transmissionMode === 'low-data'
+                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+              }`}
+              title="Tap to switch transmission mode"
+            >
+              {session.transmissionMode === 'low-data' ? (
+                <>
+                  <Leaf className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+                  <span>Data Saver</span>
+                  {session.isAutoDowngraded && (
+                    <span className="text-[9px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-bold uppercase">Auto</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                  <span>Standard</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Listeners Grid Section */}
