@@ -141,7 +141,7 @@ export class WebRtcSessionManager {
       this.isAutoDowngraded = false;
       this.highLossCount = 0;
     }
-    const targetBps = mode === 'low-data' ? 12000 : 24000;
+    const targetBps = mode === 'low-data' ? 12000 : 48000;
     if (this.activeAudioSender) {
       await negotiationController.applySenderBitrateLimit(this.activeAudioSender, targetBps);
       console.log(`[WebRtcSessionManager] Dynamic transmission mode set to ${mode} (${targetBps} bps)`);
@@ -409,8 +409,8 @@ export class WebRtcSessionManager {
       // Set remote answer
       await pc.setRemoteDescription(new RTCSessionDescription(trackResponse.sessionDescription));
 
-      // Apply target ceiling to sender parameters (Standard: 24 kbps, Data Saver: 12 kbps)
-      const targetBps = mode === 'low-data' ? 12000 : 24000;
+      // Apply target ceiling to sender parameters (Standard: 48 kbps, Data Saver: 12 kbps)
+      const targetBps = mode === 'low-data' ? 12000 : 48000;
       await negotiationController.applySenderBitrateLimit(sender, targetBps);
 
       this.publishedTrack = trackResponse.tracks[0];
@@ -587,17 +587,17 @@ export class WebRtcSessionManager {
           } else if (this.isAutoDowngraded && this.currentTransmissionMode === 'low-data' && isHealthy) {
             this.goodNetworkCount++;
             if (this.goodNetworkCount >= 5) {
-              console.log('[WebRtcSessionManager] Network recovered — Restoring to standard (24 kbps)');
+              console.log('[WebRtcSessionManager] Network recovered — Restoring to standard (48 kbps)');
               this.currentTransmissionMode = 'standard';
               this.isAutoDowngraded = false;
               this.highLossCount = 0;
               this.goodNetworkCount = 0;
-              negotiationController.applySenderBitrateLimit(this.activeAudioSender, 24000).catch(() => {});
+              negotiationController.applySenderBitrateLimit(this.activeAudioSender, 48000).catch(() => {});
               useAppStore.getState().updateSession({
                 transmissionMode: 'standard',
                 isAutoDowngraded: false,
               });
-              this.notifyModeNotice('Network recovered — Restored to Standard (24 kbps)', false);
+              this.notifyModeNotice('Network recovered — Restored to Standard (48 kbps)', false);
             }
           } else {
             if (!isDegraded) this.highLossCount = 0;
@@ -606,7 +606,7 @@ export class WebRtcSessionManager {
         }
 
         const transportStats: MediaTransportStats = {
-          bitrateKbps: Math.max(8, Math.min(64, bitrateKbps || (this.currentTransmissionMode === 'low-data' ? 12 : 24))),
+          bitrateKbps: Math.max(8, Math.min(64, bitrateKbps || (this.currentTransmissionMode === 'low-data' ? 12 : 48))),
           packetLossPercent: effectiveLoss,
           roundTripTimeMs: effectiveRtt,
           jitterMs,

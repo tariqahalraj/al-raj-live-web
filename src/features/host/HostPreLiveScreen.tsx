@@ -424,11 +424,11 @@ export const HostPreLiveScreen: React.FC = () => {
                     Standard
                   </span>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    24 kbps
+                    48 kbps
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-tight">
-                  Opus high clarity · ~10.8 MB/h
+                  Studio clarity (Default) · ~21 MB/h
                 </p>
               </button>
 
