@@ -53,7 +53,15 @@ export const ForgotPasswordScreen: React.FC = () => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
       if (error) {
-        setErrorMessage(error.message);
+        if (error.message.toLowerCase().includes('rate limit') || error.message.toLowerCase().includes('limit')) {
+          setErrorMessage(
+            isBn
+              ? 'ইমেল পাঠানোর সীমা সাময়িকভাবে পূর্ণ হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন।'
+              : 'Email rate limit reached (Supabase limit). Please wait a few minutes or contact support.'
+          );
+        } else {
+          setErrorMessage(error.message);
+        }
         return;
       }
 
@@ -109,7 +117,15 @@ export const ForgotPasswordScreen: React.FC = () => {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        if (error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid')) {
+          setErrorMessage(
+            isBn
+              ? 'ভুল বা মেয়াদোত্তীর্ণ ওটিপি কোড। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+              : 'Invalid or expired OTP code. Please check and try again.'
+          );
+        } else {
+          setErrorMessage(error.message);
+        }
         return;
       }
 
