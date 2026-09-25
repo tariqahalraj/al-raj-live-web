@@ -204,15 +204,7 @@ export const SignInScreen: React.FC = () => {
             <div className="flex justify-end pt-0.5">
               <button
                 type="button"
-                onClick={async () => {
-                  if (!email) {
-                    setErrorMessage('Please enter your email address first.');
-                    return;
-                  }
-                  const { error } = await supabase.auth.resetPasswordForEmail(email);
-                  if (error) setErrorMessage(error.message);
-                  else alert('Password reset email sent.');
-                }}
+                onClick={() => setView('forgot-password')}
                 className="text-xs font-medium text-[#15803D] hover:underline cursor-pointer"
               >
                 Forgot password?
@@ -382,15 +374,7 @@ export const SignInScreen: React.FC = () => {
                 <div className="flex justify-end pt-0.5">
                   <button
                     type="button"
-                    onClick={async () => {
-                      if (!email) {
-                        setErrorMessage('Please enter your email address first.');
-                        return;
-                      }
-                      const { error } = await supabase.auth.resetPasswordForEmail(email);
-                      if (error) setErrorMessage(error.message);
-                      else alert('Password reset email sent.');
-                    }}
+                    onClick={() => setView('forgot-password')}
                     className="text-xs font-medium text-[#15803D] hover:underline cursor-pointer"
                   >
                     Forgot password?

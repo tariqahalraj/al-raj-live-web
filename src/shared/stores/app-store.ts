@@ -4,6 +4,7 @@ import { Participant } from '@/features/live-session/participants-data';
 export type AppView = 
   | 'sign-in' 
   | 'sign-up' 
+  | 'forgot-password'
   | 'listener-preview' 
   | 'host-prelive' 
   | 'host-live' 

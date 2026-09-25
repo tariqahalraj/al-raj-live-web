@@ -580,6 +580,9 @@ export const ListenerPreviewScreen: React.FC = () => {
     }
     updateSession({ isKicked: false });
 
+    // Clean up any previous transport or publishing state before subscribing
+    webRtcSessionManager.teardown();
+
     // 1. Prime / unlock the audio element directly within the user click gesture
     webRtcSessionManager.unlockAudio();
 

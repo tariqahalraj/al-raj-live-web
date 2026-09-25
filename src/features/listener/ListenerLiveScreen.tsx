@@ -118,13 +118,25 @@ export const ListenerLiveScreen: React.FC = () => {
   useEffect(() => {
     webRtcSessionManager.playRemoteAudio().catch(() => {});
 
+    // If transport is idle, auto-subscribe to the active session track
+    const currentStatus = webRtcSessionManager.getStatus();
+    if (currentStatus === 'idle' && session.id && session.cloudflareSessionId && session.cloudflareTrackId) {
+      console.log('[ListenerLiveScreen] Auto-subscribing idle transport to:', session.cloudflareTrackId);
+      webRtcSessionManager.subscribeHostAudio(
+        session.id,
+        session.cloudflareSessionId,
+        session.cloudflareTrackId,
+        session.mediaGeneration || 1
+      ).catch(console.warn);
+    }
+
     const unregister = webRtcSessionManager.addStatusListener((status) => {
       const reconnecting = status === 'reconnecting' || status === 'soft_recovery' || status === 'hard_reset';
       setIsReconnecting(reconnecting);
     });
 
     return unregister;
-  }, []);
+  }, [session.id, session.cloudflareSessionId, session.cloudflareTrackId, session.mediaGeneration]);
 
   // Ensure listener presence is active on mount and updates in real-time
   useEffect(() => {

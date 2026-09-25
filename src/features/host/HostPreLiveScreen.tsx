@@ -45,11 +45,13 @@ export const HostPreLiveScreen: React.FC = () => {
   useEffect(() => {
     const checkActiveHostSession = async () => {
       if (session.state === 'LIVE') return;
+      if (!user?.id) return;
       try {
         const { data } = await supabase
           .from('live_sessions')
-          .select('id, title, state, media_generation, started_at, cloudflare_session_id, cloudflare_track_id')
+          .select('id, title, state, media_generation, started_at, cloudflare_session_id, cloudflare_track_id, host_id')
           .eq('state', 'LIVE')
+          .eq('host_id', user.id)
           .order('started_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -72,7 +74,7 @@ export const HostPreLiveScreen: React.FC = () => {
       }
     };
     checkActiveHostSession();
-  }, [session.state, updateSession]);
+  }, [session.state, user?.id, updateSession]);
 
   const handleStartLive = async () => {
     if (isStarting) return;
@@ -80,7 +82,7 @@ export const HostPreLiveScreen: React.FC = () => {
 
     try {
       // 1. Authoritative backend RPC: Create session in STARTING state
-      let activeSessionId = session.id;
+      let activeSessionId = '';
       let mediaGen = 1;
 
       try {
@@ -90,18 +92,21 @@ export const HostPreLiveScreen: React.FC = () => {
 
         if (rpcErr) {
           console.warn('[HostPreLive] start_host_session notice:', rpcErr.message);
-          // If an active session already exists in DB, recover its ID
-          const { data: existing } = await supabase
-            .from('live_sessions')
-            .select('id, media_generation, state')
-            .in('state', ['STARTING', 'LIVE'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          // If an active session already exists in DB for THIS host, recover its ID
+          if (user?.id) {
+            const { data: existing } = await supabase
+              .from('live_sessions')
+              .select('id, media_generation, state')
+              .eq('host_id', user.id)
+              .in('state', ['STARTING', 'LIVE'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
-          if (existing) {
-            activeSessionId = existing.id;
-            mediaGen = existing.media_generation;
+            if (existing) {
+              activeSessionId = existing.id;
+              mediaGen = existing.media_generation;
+            }
           }
         } else if (rpcData) {
           activeSessionId = rpcData.id;

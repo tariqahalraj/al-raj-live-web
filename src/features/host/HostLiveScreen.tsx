@@ -98,12 +98,13 @@ export const HostLiveScreen: React.FC = () => {
   // Auto-resolve active live session ID if not yet populated in store (e.g. page refresh)
   useEffect(() => {
     const resolveActiveSession = async () => {
-      if (!session.id) {
+      if (!session.id && user?.id) {
         try {
           const { data: activeLive } = await supabase
             .from('live_sessions')
-            .select('id, title, cloudflare_session_id, cloudflare_track_id, media_generation, state, started_at')
+            .select('id, title, cloudflare_session_id, cloudflare_track_id, media_generation, state, started_at, host_id')
             .eq('state', 'LIVE')
+            .eq('host_id', user.id)
             .order('started_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -124,7 +125,7 @@ export const HostLiveScreen: React.FC = () => {
       }
     };
     resolveActiveSession();
-  }, [session.id, session.title, updateSession]);
+  }, [session.id, session.title, user?.id, updateSession]);
 
   // Ensure host presence is active on mount
   useEffect(() => {

@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { SignInScreen } from '@/features/auth/SignInScreen';
 import { SignUpScreen } from '@/features/auth/SignUpScreen';
+import { ForgotPasswordScreen } from '@/features/auth/ForgotPasswordScreen';
 import { ListenerPreviewScreen } from '@/features/listener/ListenerPreviewScreen';
 import { HostPreLiveScreen } from '@/features/host/HostPreLiveScreen';
 import { HostLiveScreen } from '@/features/host/HostLiveScreen';
 import { HostDashboardScreen } from '@/features/host/HostDashboardScreen';
 import { ListenerLiveScreen } from '@/features/listener/ListenerLiveScreen';
-import { recoveryCoordinator } from '@/features/live-session';
+import { recoveryCoordinator, presenceManager, stopBackgroundLiveService } from '@/features/live-session';
 import { webRtcSessionManager } from '@/features/media-transport';
+import { audioEngine } from '@/features/audio-engine';
 import { supabase } from '@/core/supabase-client';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
 import { getAssetUrl } from '@/shared/utils/asset';
@@ -73,7 +75,7 @@ export const App: React.FC = () => {
     if (isAuthChecking) return;
 
     if (!user) {
-      if (currentView !== 'sign-in' && currentView !== 'sign-up') {
+      if (currentView !== 'sign-in' && currentView !== 'sign-up' && currentView !== 'forgot-password') {
         setView('sign-in');
       }
       return;
@@ -82,11 +84,33 @@ export const App: React.FC = () => {
     const isHost = user.role === 'HOST' || user.role === 'ADMIN';
 
     if (isHost) {
-      if (currentView === 'sign-in' || currentView === 'sign-up' || currentView === 'listener-preview' || currentView === 'listener-live') {
+      if (currentView === 'sign-in' || currentView === 'sign-up' || currentView === 'forgot-password' || currentView === 'listener-preview' || currentView === 'listener-live') {
         setView('host-prelive');
       }
     } else {
-      if (currentView === 'sign-in' || currentView === 'sign-up' || currentView === 'host-prelive' || currentView === 'host-live' || currentView === 'host-dashboard') {
+      if (currentView === 'host-prelive' || currentView === 'host-live' || currentView === 'host-dashboard') {
+        // Demoted or switched from Host to Listener: cleanly release host hardware and sessions
+        try {
+          webRtcSessionManager.teardown();
+          audioEngine.dispose();
+          presenceManager.leavePresence();
+          stopBackgroundLiveService();
+          const activeSession = useAppStore.getState().session;
+          if (activeSession.id) {
+            Promise.resolve(supabase.rpc('end_host_session', { p_session_id: activeSession.id })).catch(() => {});
+            Promise.resolve(supabase.rpc('finalize_host_session', { p_session_id: activeSession.id })).catch(() => {});
+          }
+        } catch {}
+        useAppStore.getState().updateSession({
+          state: 'ENDED',
+          id: '',
+          isKicked: false,
+          elapsedSeconds: 0,
+          cloudflareSessionId: undefined,
+          cloudflareTrackId: undefined,
+        });
+        setView('listener-preview');
+      } else if (currentView === 'sign-in' || currentView === 'sign-up' || currentView === 'forgot-password') {
         setView('listener-preview');
       }
     }
@@ -130,7 +154,7 @@ export const App: React.FC = () => {
 
         // Instantly route to appropriate home screen if currently on auth screen
         const currentViewNow = useAppStore.getState().currentView;
-        if (currentViewNow === 'sign-in' || currentViewNow === 'sign-up') {
+        if (currentViewNow === 'sign-in' || currentViewNow === 'sign-up' || currentViewNow === 'forgot-password') {
           setView(initialIsHost ? 'host-prelive' : 'listener-preview');
         }
 
@@ -164,7 +188,7 @@ export const App: React.FC = () => {
           } catch {}
 
           const activeView = useAppStore.getState().currentView;
-          if (activeView === 'sign-in' || activeView === 'sign-up') {
+          if (activeView === 'sign-in' || activeView === 'sign-up' || activeView === 'forgot-password') {
             setView(isHost ? 'host-prelive' : 'listener-preview');
           }
         }
@@ -242,7 +266,29 @@ export const App: React.FC = () => {
               fullName: updated.full_name || currentUser.fullName,
             });
             const activeView = useAppStore.getState().currentView;
-            if (activeView === 'sign-in' || activeView === 'sign-up') {
+            if (!isHost && (activeView === 'host-prelive' || activeView === 'host-live' || activeView === 'host-dashboard')) {
+              // Real-time demotion from Host to Listener: cleanly release host hardware and session
+              try {
+                webRtcSessionManager.teardown();
+                audioEngine.dispose();
+                presenceManager.leavePresence();
+                stopBackgroundLiveService();
+                const activeSession = useAppStore.getState().session;
+                if (activeSession.id) {
+                  Promise.resolve(supabase.rpc('end_host_session', { p_session_id: activeSession.id })).catch(() => {});
+                  Promise.resolve(supabase.rpc('finalize_host_session', { p_session_id: activeSession.id })).catch(() => {});
+                }
+              } catch {}
+              useAppStore.getState().updateSession({
+                state: 'ENDED',
+                id: '',
+                isKicked: false,
+                elapsedSeconds: 0,
+                cloudflareSessionId: undefined,
+                cloudflareTrackId: undefined,
+              });
+              useAppStore.getState().setView('listener-preview');
+            } else if (activeView === 'sign-in' || activeView === 'sign-up' || activeView === 'forgot-password') {
               useAppStore.getState().setView(isHost ? 'host-prelive' : 'listener-preview');
             }
           }
@@ -307,6 +353,7 @@ export const App: React.FC = () => {
       <div className="min-h-screen bg-slate-50 flex flex-col relative w-full overflow-x-hidden">
         {currentView === 'sign-in' && <SignInScreen />}
         {currentView === 'sign-up' && <SignUpScreen />}
+        {currentView === 'forgot-password' && <ForgotPasswordScreen />}
         {currentView === 'listener-preview' && <ListenerPreviewScreen />}
         {currentView === 'host-prelive' && <HostPreLiveScreen />}
         {currentView === 'host-live' && <HostLiveScreen />}
