@@ -7,11 +7,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx --import ./scripts/setup-node-ws.js scripts/verify-contracts.ts"
+    "test": "tsx --import ./scripts/setup-node-ws.js scripts/verify-contracts.ts",
+    "ota:pack": "tsc && vite build && tsx scripts/package-ota.ts",
+    "ota:publish": "tsx scripts/publish-ota-r2.ts"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
     "@capacitor/core": "^6.2.0",
+    "@capgo/capacitor-updater": "^6.51.23",
     "@supabase/supabase-js": "^2.49.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -22,6 +25,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1140.0",
     "@capacitor/cli": "^6.2.0",
     "@types/node": "^22.13.4",
     "@types/pg": "^8.23.1",

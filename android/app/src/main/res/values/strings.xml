@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tariqah al-Raj</string>
+    <string name="title_activity_main">Tariqah al-Raj</string>
+    <string name="package_name">org.tariqahalraj.live</string>
+    <string name="custom_url_scheme">org.tariqahalraj.live</string>
+</resources>

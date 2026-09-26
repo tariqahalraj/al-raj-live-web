@@ -127,6 +127,95 @@ export const HostLiveScreen: React.FC = () => {
     resolveActiveSession();
   }, [session.id, session.title, user?.id, updateSession]);
 
+  // Listen for session cancellation / takeover by another host
+  useEffect(() => {
+    if (!session.id) return;
+
+    let isTerminating = false;
+
+    const terminateBecauseCancelled = async () => {
+      if (isTerminating) return;
+      isTerminating = true;
+      console.log('[HostLiveScreen] Broadcast was ended/cancelled by another host. Cleaning up and exiting to PreLive...');
+
+      // 0. Auto-save recording if active
+      if (isRecording) {
+        try {
+          const duration = recordingSeconds;
+          const blob = await audioRecorder.stop();
+          setIsRecording(false);
+          if (blob && blob.size > 0) {
+            const title = session.title || 'Zikr Session';
+            const filename = audioRecorder.generateFilename(title, blob.type);
+            const savedPath = await audioRecorder.download(blob, title, filename);
+            await recordingsManager.saveRecording({
+              title,
+              blob,
+              durationSeconds: duration,
+              savedPath,
+              filename,
+            });
+          }
+        } catch (recErr) {
+          console.warn('[HostLive] Error stopping recording on session takeover:', recErr);
+        }
+      }
+
+      // 1. Teardown transport, audio, background service, presence
+      stopBackgroundLiveService();
+      webRtcSessionManager.teardown();
+      presenceManager.leavePresence();
+      recoveryCoordinator.cleanup();
+      audioEngine.dispose();
+
+      // 2. Set takeover notice in sessionStorage so HostPreLiveScreen can inform the host
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('host_cancelled_notice', 'true');
+      }
+
+      // 3. Reset session store status and navigate back to host-prelive
+      endSession();
+      setView('host-prelive');
+    };
+
+    // Realtime Supabase subscription for this host session
+    const channel = supabase
+      .channel(`host_session_lifecycle_${session.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'live_sessions', filter: `id=eq.${session.id}` },
+        (payload) => {
+          const rec = payload.new as { id?: string; state?: string } | undefined;
+          if (payload.eventType === 'DELETE' || (rec && (rec.state === 'ENDED' || rec.state === 'FAILED'))) {
+            terminateBecauseCancelled();
+          }
+        }
+      )
+      .subscribe();
+
+    // Fast fallback polling check every 1.5 seconds
+    const pollTimer = setInterval(async () => {
+      try {
+        const { data: dbSession, error } = await supabase
+          .from('live_sessions')
+          .select('id, state')
+          .eq('id', session.id)
+          .maybeSingle();
+
+        if (!error && (!dbSession || dbSession.state === 'ENDED' || dbSession.state === 'FAILED')) {
+          terminateBecauseCancelled();
+        }
+      } catch (err) {
+        console.warn('[HostLive] Fast session poll notice:', err);
+      }
+    }, 1500);
+
+    return () => {
+      channel.unsubscribe();
+      clearInterval(pollTimer);
+    };
+  }, [session.id, isRecording, recordingSeconds, session.title, endSession, setView]);
+
   // Ensure host presence is active on mount
   useEffect(() => {
     if (session.id && user) {

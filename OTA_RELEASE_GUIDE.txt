@@ -1,0 +1,63 @@
+================================================================================
+TARIQAH AL-RAJ LIVE AUDIO — OTA LIVE UPDATES GUIDE (CLOUDFLARE R2)
+================================================================================
+
+This document explains how Over-The-Air (OTA) live updates work and how to publish
+updates to your Android and Web users without reinstalling the APK.
+
+--------------------------------------------------------------------------------
+1. HOW TO PUBLISH AN OTA UPDATE (SINGLE COMMAND)
+--------------------------------------------------------------------------------
+
+Whenever you make changes to UI, audio logic, bug fixes, or new screens:
+
+Standard Release:
+  npm run ota:publish 1.0.2 "Description of your changes"
+
+Mandatory / Critical Immediate Reload:
+  npm run ota:publish 1.0.2 "Critical bugfix" --mandatory
+
+What this command does automatically:
+  1. Compiles the TypeScript and Vite web application into dist/
+  2. Zips the bundle into bundle-<version>.zip with index.html at root
+  3. Updates the version.json manifest
+  4. Uploads both files directly to your Cloudflare R2 bucket:
+     - Manifest: https://pub-1ef49b55ff214047ba5139361e0a6c3c.r2.dev/version.json
+     - Bundle:   https://pub-1ef49b55ff214047ba5139361e0a6c3c.r2.dev/bundles/bundle-<version>.zip
+  5. Active users on Android receive the update automatically on startup!
+
+--------------------------------------------------------------------------------
+2. LIVE ENDPOINTS
+--------------------------------------------------------------------------------
+Bucket Name:     alraj-live-ota
+Cloudflare Edge: https://pub-1ef49b55ff214047ba5139361e0a6c3c.r2.dev
+Live Manifest:   https://pub-1ef49b55ff214047ba5139361e0a6c3c.r2.dev/version.json
+Current Version: 1.0.1
+
+--------------------------------------------------------------------------------
+3. USER EXPERIENCE ON MOBILE (ANDROID)
+--------------------------------------------------------------------------------
+• Background Check:
+  When the app opens, it checks Cloudflare R2 for newer versions.
+• Silent Download:
+  If a new version exists, the bundle downloads in the background without
+  interrupting any live audio session.
+• Seamless Activation:
+  Non-mandatory updates are applied automatically the next time the app opens,
+  or users can tap the in-app "Restart" banner to apply immediately.
+
+--------------------------------------------------------------------------------
+4. WHEN DO YOU NEED A NEW APK?
+--------------------------------------------------------------------------------
+• OTA Live Updates handle 95% of releases:
+  - UI/UX layout and styles
+  - Bengali & English translations
+  - Audio player and WebRTC logic
+  - Stored procedures / database handling
+  - New screens and navigation
+
+• You ONLY need a new APK if:
+  - Native Java Android code changes (e.g. MainActivity.java, LiveBackgroundService)
+  - Android permissions in AndroidManifest.xml change
+  - New native Capacitor plugins are added to Gradle
+================================================================================

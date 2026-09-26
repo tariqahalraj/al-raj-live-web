@@ -14,6 +14,8 @@ import { audioEngine } from '@/features/audio-engine';
 import { supabase } from '@/core/supabase-client';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
 import { getAssetUrl } from '@/shared/utils/asset';
+import { otaManager } from '@/core/updater/ota-manager';
+import { OtaBanner } from '@/core/updater/OtaBanner';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -128,6 +130,9 @@ export const App: React.FC = () => {
 
     // Arm native background live session monitor
     startNativeLiveMonitoring();
+
+    // Initialize OTA Live Updates (Cloudflare R2)
+    otaManager.initialize();
 
     // Helper to resolve user role and hydrate state reliably from localStorage cache and public.profiles
     const hydrateUser = async (sessionUser: { id: string; email?: string; user_metadata?: Record<string, unknown> }) => {
@@ -367,6 +372,9 @@ export const App: React.FC = () => {
           playsInline
           style={{ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', opacity: 1, zIndex: -50, pointerEvents: 'none' }}
         />
+
+        {/* In-App OTA Live Update Floating Notification */}
+        <OtaBanner />
       </div>
     </ErrorBoundary>
   );

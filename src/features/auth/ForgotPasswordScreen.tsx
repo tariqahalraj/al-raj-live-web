@@ -97,12 +97,12 @@ export const ForgotPasswordScreen: React.FC = () => {
     }
   };
 
-  // Step 2: Verify 6-digit OTP code
+  // Step 2: Verify OTP code
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otp.trim();
     if (cleanOtp.length < 6) {
-      setErrorMessage(isBn ? 'অনুগ্রহ করে সঠিক ৬-সংখ্যার কোড দিন।' : 'Please enter the complete 6-digit code.');
+      setErrorMessage(isBn ? 'অনুগ্রহ করে সঠিক ওটিপি কোড দিন।' : 'Please enter the complete verification code.');
       return;
     }
 
@@ -261,9 +261,9 @@ export const ForgotPasswordScreen: React.FC = () => {
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-2 mb-6 max-w-xs mx-auto leading-relaxed">
               {isBn ? (
-                <>আমরা <strong>{email}</strong> এ একটি ৬-সংখ্যার কোড পাঠিয়েছি।</>
+                <>আমরা <strong>{email}</strong> এ একটি যাচাইকরণ কোড পাঠিয়েছি।</>
               ) : (
-                <>We sent a 6-digit code to <strong className="text-slate-700">{email}</strong>.</>
+                <>We sent a verification code to <strong className="text-slate-700">{email}</strong>.</>
               )}
             </p>
 
@@ -287,7 +287,7 @@ export const ForgotPasswordScreen: React.FC = () => {
                     maxLength={8}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="12345678"
+                    placeholder="• • • • • • • •"
                     className="w-full text-center font-mono text-2xl font-bold tracking-widest text-slate-900 placeholder:text-slate-300 bg-transparent outline-none"
                     autoFocus
                   />

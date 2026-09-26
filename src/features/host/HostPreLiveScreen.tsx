@@ -16,18 +16,35 @@ import {
 import { useAppStore } from '@/shared/stores/app-store';
 import { audioEngine, recordingService } from '@/features/audio-engine';
 import { webRtcSessionManager } from '@/features/media-transport';
-import { presenceManager, recoveryCoordinator } from '@/features/live-session';
+import { presenceManager, recoveryCoordinator, stopBackgroundLiveService } from '@/features/live-session';
 import { formatDuration } from '@/shared/utils/format';
 import { supabase } from '@/core/supabase-client';
 import { getInitials } from '@/features/live-session/participants-data';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
 
 export const HostPreLiveScreen: React.FC = () => {
-  const { setView, setPreviousHostView, session, user, updateSession, endSession, setTransmissionMode } = useAppStore();
+  const { setView, setPreviousHostView, session, user, updateSession, endSession, setTransmissionMode, language } = useAppStore();
   const [isStarting, setIsStarting] = useState(false);
   const [sessionTitle, setSessionTitle] = useState(session.title || 'Zikr Session');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [takeoverNotice, setTakeoverNotice] = useState<string | null>(null);
+
+  const isBn = language === 'bn';
+
+  // Check if this host session was cancelled/taken over by another host
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('host_cancelled_notice')) {
+      sessionStorage.removeItem('host_cancelled_notice');
+      setTakeoverNotice(
+        isBn
+          ? 'অন্য একজন হোস্ট লাইভ সম্প্রচার শুরু করেছেন। আপনার পূর্ববর্তী সেশনটি সমাপ্ত করা হয়েছে।'
+          : 'Another host started broadcasting. Your previous broadcast was ended.'
+      );
+      const timer = setTimeout(() => setTakeoverNotice(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [isBn]);
 
   // Safeguard: verify user is authenticated and is actually host
   useEffect(() => {
@@ -81,6 +98,12 @@ export const HostPreLiveScreen: React.FC = () => {
     setIsStarting(true);
 
     try {
+      // 0. Ensure clean slate: dispose any prior transport or audio
+      stopBackgroundLiveService();
+      webRtcSessionManager.teardown();
+      audioEngine.dispose();
+      recoveryCoordinator.cleanup();
+      presenceManager.leavePresence();
       // 1. Authoritative backend RPC: Create session in STARTING state
       let activeSessionId = '';
       let mediaGen = 1;
@@ -266,6 +289,15 @@ export const HostPreLiveScreen: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {takeoverNotice && (
+        <div className="w-full max-w-md md:max-w-xl mx-auto px-4 mt-3">
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-xs sm:text-sm font-medium shadow-xs animate-in fade-in duration-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="flex-1 text-left">{takeoverNotice}</span>
+          </div>
+        </div>
+      )}
 
       {isLive ? (
         /* ================= ACTIVE LIVE RUNNING STATE ================= */

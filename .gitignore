@@ -1,17 +1,55 @@
 # Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Production build
+# Testing & Coverage
+coverage/
+
+# Production Build
 dist/
-dist-ssr/
+build/
+backup/
+ota-release/
 
 # Environment files
+.env
 .env.local
 .env.*.local
+credentials.txt
 
 # Editor & OS files
 .DS_Store
-Thumbs.db
-*.log
-.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Capacitor & Android build artifacts
+*.apk
+android/app/build/
+android/.gradle/
+android/.jdk/
+android/.jdk21/
+.jdk*/
+.vite/
+android/local.properties
+android/captures/
+android/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+
+# Supabase CLI temporary files
+supabase/.temp/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+records.txt

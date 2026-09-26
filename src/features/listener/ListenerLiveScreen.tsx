@@ -173,19 +173,96 @@ export const ListenerLiveScreen: React.FC = () => {
     };
   }, [session.id, user?.id]);
 
-  // 1. Listen for Host Ending Live (Real-time Supabase postgres_changes + resilient fallback polling)
+  // 1. Listen for Host Ending Live / Multi-host Handover (Real-time Supabase postgres_changes + resilient fallback polling)
   useEffect(() => {
     const channel = supabase
       .channel(`listener_session_lifecycle_${session.id || 'live'}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'live_sessions' },
-        (payload) => {
-          const newRecord = payload.new as { id?: string; state?: string };
+        async (payload) => {
+          const newRecord = payload.new as {
+            id?: string;
+            title?: string;
+            state?: string;
+            cloudflare_session_id?: string;
+            cloudflare_track_id?: string;
+            media_generation?: number;
+          } | undefined;
+
+          // Case A: A new host session has transitioned to LIVE! Auto-switch audio smoothly without kicking listener!
+          if (
+            newRecord &&
+            newRecord.state === 'LIVE' &&
+            newRecord.id &&
+            newRecord.id !== session.id &&
+            newRecord.cloudflare_session_id &&
+            newRecord.cloudflare_track_id
+          ) {
+            console.log('[ListenerLiveScreen] New host session became LIVE! Auto-switching to new broadcast:', newRecord.id);
+            updateSession({
+              id: newRecord.id,
+              title: newRecord.title || session.title,
+              cloudflareSessionId: newRecord.cloudflare_session_id,
+              cloudflareTrackId: newRecord.cloudflare_track_id,
+              mediaGeneration: newRecord.media_generation || 1,
+              state: 'LIVE',
+            });
+            webRtcSessionManager
+              .subscribeHostAudio(
+                newRecord.id,
+                newRecord.cloudflare_session_id,
+                newRecord.cloudflare_track_id,
+                newRecord.media_generation || 1
+              )
+              .catch(console.warn);
+            return;
+          }
+
+          // Case B: Our current session was ended or deleted
           if (
             payload.eventType === 'DELETE' ||
-            (newRecord && (newRecord.state === 'ENDED' || newRecord.state === 'FAILED'))
+            (newRecord && newRecord.id === session.id && (newRecord.state === 'ENDED' || newRecord.state === 'FAILED'))
           ) {
+            // Check if another host has started a new live broadcast (handover)
+            try {
+              const { data: handoverLive } = await supabase
+                .from('live_sessions')
+                .select('id, title, cloudflare_session_id, cloudflare_track_id, media_generation, state')
+                .eq('state', 'LIVE')
+                .order('started_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (
+                handoverLive &&
+                handoverLive.id !== session.id &&
+                handoverLive.cloudflare_session_id &&
+                handoverLive.cloudflare_track_id
+              ) {
+                console.log('[ListenerLiveScreen] Handing over audio to new host session:', handoverLive.id);
+                updateSession({
+                  id: handoverLive.id,
+                  title: handoverLive.title || session.title,
+                  cloudflareSessionId: handoverLive.cloudflare_session_id,
+                  cloudflareTrackId: handoverLive.cloudflare_track_id,
+                  mediaGeneration: handoverLive.media_generation || 1,
+                  state: 'LIVE',
+                });
+                webRtcSessionManager
+                  .subscribeHostAudio(
+                    handoverLive.id,
+                    handoverLive.cloudflare_session_id,
+                    handoverLive.cloudflare_track_id,
+                    handoverLive.media_generation || 1
+                  )
+                  .catch(console.warn);
+                return;
+              }
+            } catch (switchErr) {
+              console.warn('[ListenerLiveScreen] Handover check notice:', switchErr);
+            }
+
             exitEndedSession();
           }
         }
@@ -210,6 +287,38 @@ export const ListenerLiveScreen: React.FC = () => {
         }
 
         if (targetSession && (targetSession.state === 'ENDED' || targetSession.state === 'FAILED')) {
+          // Check for handover before exiting
+          try {
+            const { data: nextLive } = await supabase
+              .from('live_sessions')
+              .select('id, title, cloudflare_session_id, cloudflare_track_id, media_generation, state')
+              .eq('state', 'LIVE')
+              .order('started_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (nextLive && nextLive.id !== session.id && nextLive.cloudflare_session_id && nextLive.cloudflare_track_id) {
+              console.log('[ListenerLiveScreen] Polling found handover session:', nextLive.id);
+              updateSession({
+                id: nextLive.id,
+                title: nextLive.title || session.title,
+                cloudflareSessionId: nextLive.cloudflare_session_id,
+                cloudflareTrackId: nextLive.cloudflare_track_id,
+                mediaGeneration: nextLive.media_generation || 1,
+                state: 'LIVE',
+              });
+              webRtcSessionManager
+                .subscribeHostAudio(
+                  nextLive.id,
+                  nextLive.cloudflare_session_id,
+                  nextLive.cloudflare_track_id,
+                  nextLive.media_generation || 1
+                )
+                .catch(console.warn);
+              return;
+            }
+          } catch {}
+
           console.log('[ListenerLiveScreen] Target session marked ENDED/FAILED in database.');
           exitEndedSession();
           return;
