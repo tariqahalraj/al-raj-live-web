@@ -21,6 +21,8 @@ import { formatDuration } from '@/shared/utils/format';
 import { supabase } from '@/core/supabase-client';
 import { getInitials } from '@/features/live-session/participants-data';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
+import { getAssetUrl } from '@/shared/utils/asset';
+import { profileCache } from '@/shared/utils/profile-cache';
 
 export const HostPreLiveScreen: React.FC = () => {
   const { setView, setPreviousHostView, session, user, updateSession, endSession, setTransmissionMode, language } = useAppStore();
@@ -57,6 +59,13 @@ export const HostPreLiveScreen: React.FC = () => {
       setView('listener-preview');
     }
   }, [user, setView]);
+
+  // Preload host avatar image for immediate rendering
+  useEffect(() => {
+    if (user?.avatarUrl) {
+      profileCache.preloadImage(user.avatarUrl);
+    }
+  }, [user?.avatarUrl]);
 
   // Check if there is an active session in Supabase if store doesn't show LIVE yet
   useEffect(() => {
@@ -251,7 +260,7 @@ export const HostPreLiveScreen: React.FC = () => {
                 alt={user.fullName}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/host-avatar.jpg';
+                  (e.target as HTMLImageElement).src = getAssetUrl('assets/host-avatar.jpg');
                 }}
               />
             ) : (

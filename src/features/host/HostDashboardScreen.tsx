@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, ShieldBan, BarChart3, Disc, CheckCircle, Clock, Radio, Users, 
-  Search, Play, Pause, Trash2, Volume2, VolumeX, Menu, X, RotateCcw, RotateCw 
+  Search, Play, Pause, Trash2, Volume2, VolumeX, Menu, X, RotateCcw, RotateCw, Loader2 
 } from 'lucide-react';
 import { useAppStore } from '@/shared/stores/app-store';
 import { presenceManager, BannedUser } from '@/features/live-session/presence-manager';
@@ -10,6 +10,7 @@ import { formatDuration } from '@/shared/utils/format';
 import { recordingsManager, AppRecording } from '@/features/audio-engine/recordings-manager';
 import { supabase } from '@/core/supabase-client';
 import { getAssetUrl } from '@/shared/utils/asset';
+import { profileCache } from '@/shared/utils/profile-cache';
 
 const formatAudioTime = (seconds: number): string => {
   if (isNaN(seconds) || seconds < 0 || !isFinite(seconds)) return '00:00';
@@ -514,6 +515,17 @@ export const HostDashboardScreen: React.FC = () => {
         try {
           localStorage.setItem('tariqah_cached_signed_users', JSON.stringify(data));
         } catch (e) {}
+        (data as SignedUserProfile[]).forEach((p) => {
+          profileCache.set({
+            id: p.id,
+            fullName: p.full_name,
+            avatarUrl: p.avatar_url || undefined,
+            role: p.role,
+          });
+        });
+        (data as SignedUserProfile[]).slice(0, 25).forEach((p) => {
+          if (p.avatar_url) profileCache.preloadImage(p.avatar_url);
+        });
         return;
       }
 
@@ -540,6 +552,17 @@ export const HostDashboardScreen: React.FC = () => {
           try {
             localStorage.setItem('tariqah_cached_signed_users', JSON.stringify(restData));
           } catch (e) {}
+          (restData as SignedUserProfile[]).forEach((p) => {
+            profileCache.set({
+              id: p.id,
+              fullName: p.full_name,
+              avatarUrl: p.avatar_url || undefined,
+              role: p.role,
+            });
+          });
+          (restData as SignedUserProfile[]).slice(0, 25).forEach((p) => {
+            if (p.avatar_url) profileCache.preloadImage(p.avatar_url);
+          });
           return;
         }
       }
@@ -564,6 +587,17 @@ export const HostDashboardScreen: React.FC = () => {
             try {
               localStorage.setItem('tariqah_cached_signed_users', JSON.stringify(restData));
             } catch (e) {}
+            (restData as SignedUserProfile[]).forEach((p) => {
+              profileCache.set({
+                id: p.id,
+                fullName: p.full_name,
+                avatarUrl: p.avatar_url || undefined,
+                role: p.role,
+              });
+            });
+            (restData as SignedUserProfile[]).slice(0, 25).forEach((p) => {
+              if (p.avatar_url) profileCache.preloadImage(p.avatar_url);
+            });
           }
         }
       } catch (e) {}
@@ -790,7 +824,14 @@ export const HostDashboardScreen: React.FC = () => {
           <div className="p-3.5 md:p-4 bg-slate-50/70 border-b border-slate-200/80 shrink-0 flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#15803D] text-white font-bold flex items-center justify-center text-xs shadow-xs overflow-hidden shrink-0">
               {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                <img
+                  src={user.avatarUrl}
+                  alt={user.fullName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = getAssetUrl('assets/host-avatar.jpg');
+                  }}
+                />
               ) : (
                 getInitials(user.fullName)
               )}
@@ -1007,8 +1048,9 @@ export const HostDashboardScreen: React.FC = () => {
           {/* ================= TAB 0: ALL REGISTERED USERS ================= */}
           {activeTab === 'users' && (
             <div className="space-y-4">
-              {isLoadingUsers ? (
-                <div className="py-16 flex justify-center items-center text-slate-400 text-xs">
+              {signedUsers.length === 0 && isLoadingUsers ? (
+                <div className="py-16 flex justify-center items-center text-slate-400 text-xs gap-2">
+                  <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
                   Loading registered users...
                 </div>
               ) : signedUsers.length === 0 ? (
@@ -1024,6 +1066,7 @@ export const HostDashboardScreen: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-[#15803D]" />
                         <h3 className="text-sm font-bold text-slate-900">User Directory</h3>
+                        {isLoadingUsers && <Loader2 className="w-3.5 h-3.5 text-[#15803D] animate-spin" />}
                       </div>
                       <span className="text-xs text-slate-500 font-medium">
                         Showing {filteredUsers.length} of {signedUsers.length} users
@@ -1053,7 +1096,15 @@ export const HostDashboardScreen: React.FC = () => {
                                 <div className="flex items-center gap-3">
                                   {u.avatar_url ? (
                                     <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                                      <img src={u.avatar_url} alt={u.full_name} className="w-full h-full object-cover" />
+                                      <img
+                                        src={u.avatar_url}
+                                        alt={u.full_name}
+                                        className="w-full h-full object-cover"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                                        }}
+                                      />
                                     </div>
                                   ) : (
                                     <div className="w-9 h-9 rounded-full bg-emerald-100 border border-emerald-200 text-[#15803D] flex items-center justify-center font-bold text-xs shrink-0">
@@ -1166,7 +1217,15 @@ export const HostDashboardScreen: React.FC = () => {
                           <div className="flex items-center gap-3 overflow-hidden">
                             {u.avatar_url ? (
                               <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                                <img src={u.avatar_url} alt={u.full_name} className="w-full h-full object-cover" />
+                                <img
+                                  src={u.avatar_url}
+                                  alt={u.full_name}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                                  }}
+                                />
                               </div>
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 text-[#15803D] flex items-center justify-center font-bold text-xs shrink-0">
@@ -1295,7 +1354,15 @@ export const HostDashboardScreen: React.FC = () => {
                               <div className="flex items-center gap-3">
                                 {bUser.avatarUrl ? (
                                   <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                                    <img src={bUser.avatarUrl} alt={bUser.name} className="w-full h-full object-cover" />
+                                    <img
+                                      src={bUser.avatarUrl}
+                                      alt={bUser.name}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                                      }}
+                                    />
                                   </div>
                                 ) : (
                                   <div className="w-9 h-9 rounded-full bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center font-bold text-xs shrink-0">
@@ -1357,7 +1424,15 @@ export const HostDashboardScreen: React.FC = () => {
                         <div className="flex items-center gap-3 overflow-hidden">
                           {bUser.avatarUrl ? (
                             <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                              <img src={bUser.avatarUrl} alt={bUser.name} className="w-full h-full object-cover" />
+                              <img
+                                src={bUser.avatarUrl}
+                                alt={bUser.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                                }}
+                              />
                             </div>
                           ) : (
                             <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center font-bold text-xs shrink-0">

@@ -21,6 +21,8 @@ import { recordingsManager } from '@/features/audio-engine/recordings-manager';
 import { webRtcSessionManager } from '@/features/media-transport';
 import { presenceManager, recoveryCoordinator, startBackgroundLiveService, stopBackgroundLiveService } from '@/features/live-session';
 import { supabase } from '@/core/supabase-client';
+import { getAssetUrl } from '@/shared/utils/asset';
+import { profileCache } from '@/shared/utils/profile-cache';
 
 export const HostLiveScreen: React.FC = () => {
   const {
@@ -256,7 +258,7 @@ export const HostLiveScreen: React.FC = () => {
         artist: 'Our Murshid (Host)',
         album: 'Tariqah al-Raj Live',
         artwork: [
-          { src: '/assets/app-logo.png', sizes: '512x512', type: 'image/png' },
+          { src: getAssetUrl('assets/app-logo.png'), sizes: '512x512', type: 'image/png' },
         ],
       });
       navigator.mediaSession.playbackState = 'playing';
@@ -454,6 +456,21 @@ export const HostLiveScreen: React.FC = () => {
 
   // Exclude host from listeners list (only real signed-in listeners shown)
   const listeners = participants.filter((p) => !p.isHost);
+
+  // Preload and cache listener profiles for instant zero-latency rendering
+  useEffect(() => {
+    listeners.forEach((l) => {
+      if (l.avatarUrl) {
+        profileCache.preloadImage(l.avatarUrl);
+      }
+      profileCache.set({
+        id: l.id,
+        fullName: l.name,
+        avatarUrl: l.avatarUrl,
+        role: 'USER',
+      });
+    });
+  }, [listeners]);
 
   return (
     <div className="w-full flex flex-col min-h-screen bg-slate-50 md:bg-slate-100/60 justify-between overflow-hidden">
@@ -690,6 +707,10 @@ export const HostLiveScreen: React.FC = () => {
                             src={listener.avatarUrl}
                             alt={listener.name}
                             className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                            }}
                           />
                         </div>
                       ) : (
@@ -821,6 +842,10 @@ export const HostLiveScreen: React.FC = () => {
                           src={listener.avatarUrl}
                           alt={listener.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                          }}
                         />
                       </div>
                     ) : (
@@ -979,6 +1004,9 @@ export const HostLiveScreen: React.FC = () => {
                   src={targetKickUser.avatarUrl}
                   alt={targetKickUser.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = getAssetUrl('assets/app-logo.png');
+                  }}
                 />
               </div>
             ) : (

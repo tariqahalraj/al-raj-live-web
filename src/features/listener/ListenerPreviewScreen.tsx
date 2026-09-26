@@ -10,6 +10,7 @@ import { getInitials } from '@/features/live-session/participants-data';
 import { EditProfileModal } from '@/features/profile/EditProfileModal';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
 import { getAssetUrl } from '@/shared/utils/asset';
+import { profileCache } from '@/shared/utils/profile-cache';
 
 export const ListenerPreviewScreen: React.FC = () => {
   const { setView, session, user, updateSession, setUser } = useAppStore();
@@ -126,18 +127,33 @@ export const ListenerPreviewScreen: React.FC = () => {
         let hostAvatarUrl: string | undefined = getAssetUrl('assets/host-avatar.jpg');
 
         if (data.host_id) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, avatar_url')
-            .eq('id', data.host_id)
-            .maybeSingle();
-
-          if (profile) {
-            hostName = profile.full_name || 'Our Murshid';
-            if (profile.avatar_url) {
-              hostAvatarUrl = profile.avatar_url;
+          const cached = profileCache.getSync(data.host_id);
+          if (cached) {
+            hostName = cached.fullName || hostName;
+            if (cached.avatarUrl) {
+              hostAvatarUrl = cached.avatarUrl;
             }
           }
+
+          // Asynchronously revalidate or fetch if missing without blocking live render
+          profileCache.getFast(data.host_id).then((profile) => {
+            if (profile) {
+              const currentSession = useAppStore.getState().session;
+              if (
+                currentSession.id === data.id &&
+                (currentSession.hostName !== profile.fullName || currentSession.hostAvatarUrl !== profile.avatarUrl)
+              ) {
+                updateSession({
+                  hostName: profile.fullName || 'Our Murshid',
+                  hostAvatarUrl: profile.avatarUrl || hostAvatarUrl,
+                });
+              }
+            }
+          }).catch(() => {});
+        }
+
+        if (hostAvatarUrl) {
+          profileCache.preloadImage(hostAvatarUrl);
         }
 
         const startedAt = data.started_at ? new Date(data.started_at).getTime() : Date.now();

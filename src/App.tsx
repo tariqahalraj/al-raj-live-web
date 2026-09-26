@@ -14,6 +14,7 @@ import { audioEngine } from '@/features/audio-engine';
 import { supabase } from '@/core/supabase-client';
 import { startNativeLiveMonitoring } from '@/features/live-session/live-background-service';
 import { getAssetUrl } from '@/shared/utils/asset';
+import { profileCache } from '@/shared/utils/profile-cache';
 import { otaManager } from '@/core/updater/ota-manager';
 import { OtaBanner } from '@/core/updater/OtaBanner';
 
@@ -183,6 +184,12 @@ export const App: React.FC = () => {
           };
 
           setUser(updatedUser);
+          profileCache.set({
+            id: updatedUser.id,
+            fullName: updatedUser.fullName,
+            avatarUrl: updatedUser.avatarUrl,
+            role: updatedUser.role,
+          });
 
           try {
             localStorage.setItem(`tariqah_profile_${sessionUser.id}`, JSON.stringify({
@@ -203,7 +210,7 @@ export const App: React.FC = () => {
     };
 
     const splashStartTime = Date.now();
-    const MIN_SPLASH_MS = 1800; // Display splash screen for at least 1.8 seconds
+    const MIN_SPLASH_MS = 250; // Ultra-fast 250ms web splash screen for instant website experience
 
     let isFinished = false;
     const finishAuth = () => {
